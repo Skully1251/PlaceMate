@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard.jsx';
 import InterviewPrep from './pages/InterviewPrep.jsx';
 import ResumeGenerator from './pages/ResumeGenerator.jsx';
 import ATSChecker from './pages/ATSChecker.jsx';
-import InternshipFinder from './pages/InternshipFinder.jsx';
 import CompanyPrep from './pages/CompanyPrep.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
@@ -26,7 +25,6 @@ function App() {
         <Route path="interview-prep" element={<InterviewPrep />} />
         <Route path="resume-generator" element={<ResumeGenerator />} />
         <Route path="ats-checker" element={<ATSChecker />} />
-        <Route path="internship-finder" element={<InternshipFinder />} />
         <Route path="company-prep" element={<CompanyPrep />} />
         <Route path="settings" element={<SettingsPlaceholder />} />
       </Route>

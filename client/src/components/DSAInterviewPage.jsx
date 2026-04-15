@@ -96,7 +96,7 @@ const fetchDSAQuestion = async (diff) => {
         fetchDSAQuestion(diff);
     };
 
-    const speak = useCallback((text) => {
+    const speak = useCallback((text, onSpeechEnd = null) => {
         window.speechSynthesis.cancel();
         setIsSpeaking(true);
         setDisplayedResponse('');
@@ -119,6 +119,9 @@ const fetchDSAQuestion = async (diff) => {
             setIsSpeaking(false);
             setDisplayedResponse(text);
             clearInterval(interval);
+            if (typeof onSpeechEnd === 'function') {
+                onSpeechEnd();
+            }
         };
         
         window.speechSynthesis.speak(utterance);
@@ -127,9 +130,18 @@ const fetchDSAQuestion = async (diff) => {
     const handleSubmitCode = () => {
         setStep('explaining');
         const prompt = "Great! Now please explain your approach and the time/space complexity of your solution.";
-        speak(prompt);
         setDisplayedResponse(prompt);
-        startListening();
+        speak(prompt, () => {
+            if (recognitionRef.current) {
+                setTranscript('');
+                try {
+                    recognitionRef.current.start();
+                    setIsListening(true);
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+        });
     };
 
     const startListening = useCallback(() => {

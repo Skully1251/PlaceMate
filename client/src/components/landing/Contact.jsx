@@ -48,7 +48,7 @@ function Contact() {
               </div>
               <div>
                 <p className="text-white/45 text-sm">Email us at</p>
-                <a href="mailto:hello@nexa-ai.com" className="text-white font-medium hover:text-violet transition-colors">placemate@gmail.com</a>
+                <a href="mailto:S24CSEU0980@bennett.edu.in" className="text-white font-medium hover:text-violet transition-colors">S24CSEU0980@bennett.edu.in</a>
               </div>
             </div>
             <div className="flex items-center gap-4 group">

@@ -86,9 +86,13 @@ function ResumeGenerator() {
 
       try {
         const startTimeStr = Date.now();
+        const token = localStorage.getItem('firebaseToken');
         const res = await fetch('http://localhost:3001/api/resume/generate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             github,
             linkedin,
@@ -104,11 +108,11 @@ function ResumeGenerator() {
           setLatexCode(data.latex);
           setTimeTaken(data.timeTakenMs || (Date.now() - startTimeStr));
         } else {
-          setLatexCode('\\documentclass{article}\n\\begin{document}\n\\section*{Error Generating Resume}\nThe AI failed to generate your LaTeX resume. This might be due to an invalid or missing API key in the backend. Please check your backend logs and API configuration.\n\\end{document}');
+          setLatexCode('% Failed to generated LaTeX from AI');
           setTimeTaken(Date.now() - startTimeStr);
         }
       } catch (error) {
-        setLatexCode('\\documentclass{article}\n\\begin{document}\n\\section*{Error}\nError generating LaTeX: ' + error.message + '\n\\end{document}');
+        setLatexCode('% Error generating LaTeX: ' + error.message);
         setTimeTaken(1000);
       } finally {
         clearInterval(progressInterval);
@@ -316,23 +320,10 @@ function ResumeGenerator() {
   };
 
   return (
-    <div ref={containerRef} className="max-w-4xl mx-auto space-y-6 relative">
-      {/* Back Button */}
-      {step > 1 && (
-        <button 
-          onClick={() => setStep(step === 4 ? 1 : step - 1)}
-          className="absolute -top-12 left-0 flex items-center gap-2 text-white/50 hover:text-white transition-colors duration-200"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span className="text-sm font-medium">{step === 4 ? 'Generate Another' : 'Back'}</span>
-        </button>
-      )}
-
+    <div ref={containerRef} className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Resume Generator</h2>
-        <p className="text-white/60">Generate an ATS-friendly LaTeX resume tailored to your profile.</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Resume Generator</h2>
+        <p className="text-white/50 text-sm">Build an ATS-friendly resume from your profiles</p>
       </div>
       {renderStep()}
     </div>

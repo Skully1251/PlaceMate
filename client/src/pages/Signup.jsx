@@ -1,25 +1,91 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  auth,
+  googleProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from '../config/firebase.js';
+import api from '../utils/api.js';
 
 function Signup() {
   const navigate = useNavigate();
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    // Dummy signup logic
-    localStorage.setItem('token', 'dummy_token');
-    localStorage.setItem('userName', name);
-    localStorage.setItem('userEmail', email);
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Set display name
+      await updateProfile(user, { displayName: name });
+
+      const token = await user.getIdToken();
+
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('userName', name);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userUid', user.uid);
+
+      // Create user profile in Firestore via backend
+      await api.post('/api/auth/signup', {
+        uid: user.uid,
+        name,
+        email: user.email,
+      });
+
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Signup error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please log in instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
+      } else {
+        setError(err.message || 'Signup failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleSignup = () => {
-    localStorage.setItem('token', 'dummy_google_token');
-    localStorage.setItem('userName', 'Google User');
-    localStorage.setItem('userEmail', 'google@example.com');
-    navigate('/dashboard');
+  const handleGoogleSignup = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const token = await user.getIdToken();
+
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('userName', user.displayName || 'Google User');
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userUid', user.uid);
+
+      // Sync with backend
+      await api.post('/api/auth/google', {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+      });
+
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Google signup error:', err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'Google signup failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,6 +108,12 @@ function Signup() {
           <h2 className="text-3xl font-black mb-2 drop-shadow-md">Create Account</h2>
           <p className="text-white/70">Join PlaceMate today</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSignup} className="space-y-6">
           <div>
@@ -71,6 +143,8 @@ function Signup() {
             <input 
               type="password" 
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet/50 text-white placeholder-white/30 transition-all shadow-inner"
               placeholder="••••••••"
             />
@@ -78,9 +152,10 @@ function Signup() {
           
           <button 
             type="submit"
-            className="w-full py-3.5 px-4 bg-violet hover:bg-violet-600 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-violet/50"
+            disabled={loading}
+            className="w-full py-3.5 px-4 bg-violet hover:bg-violet-600 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-violet/50 disabled:opacity-50"
           >
-            Create Account
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
@@ -92,7 +167,8 @@ function Signup() {
 
         <button 
           onClick={handleGoogleSignup}
-          className="mt-6 w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-3"
+          disabled={loading}
+          className="mt-6 w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5">
             <path

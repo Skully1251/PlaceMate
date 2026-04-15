@@ -1,25 +1,82 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  auth,
+  googleProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+} from '../config/firebase.js';
+import api from '../utils/api.js';
 
 function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Dummy login: set a token and redirect
-    const name = email.split('@')[0];
-    localStorage.setItem('token', 'dummy_token');
-    localStorage.setItem('userName', name);
-    localStorage.setItem('userEmail', email);
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const token = await user.getIdToken();
+
+      // Store auth state
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('userName', user.displayName || email.split('@')[0]);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userUid', user.uid);
+
+      // Sync with backend
+      await api.post('/api/auth/login', { uid: user.uid });
+
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found with this email. Please sign up first.');
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Incorrect password. Please try again.');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    localStorage.setItem('token', 'dummy_google_token');
-    localStorage.setItem('userName', 'Google User');
-    localStorage.setItem('userEmail', 'google@example.com');
-    navigate('/dashboard');
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const token = await user.getIdToken();
+
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('userName', user.displayName || 'Google User');
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userUid', user.uid);
+
+      // Sync with backend
+      await api.post('/api/auth/google', {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+      });
+
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Google login error:', err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'Google login failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,6 +100,12 @@ function Login() {
           <p className="text-white/70">Sign in to continue to PlaceMate</p>
         </div>
 
+        {error && (
+          <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-white/80 mb-2">Email Address</label>
@@ -60,6 +123,8 @@ function Login() {
             <input 
               type="password" 
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet/50 text-white placeholder-white/30 transition-all"
               placeholder="••••••••"
             />
@@ -67,9 +132,10 @@ function Login() {
           
           <button 
             type="submit"
-            className="w-full py-3.5 px-4 bg-violet hover:bg-violet-600 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-violet/50"
+            disabled={loading}
+            className="w-full py-3.5 px-4 bg-violet hover:bg-violet-600 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-violet/50 disabled:opacity-50"
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
@@ -81,7 +147,8 @@ function Login() {
 
         <button 
           onClick={handleGoogleLogin}
-          className="mt-6 w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-3"
+          disabled={loading}
+          className="mt-6 w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5">
             <path

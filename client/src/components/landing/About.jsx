@@ -37,7 +37,7 @@ function About() {
               Building the future of <span className="text-violet">interview preparation</span>
             </h3>
             <p className="text-white/60 leading-relaxed mb-6">
-              Nexa AI is an intelligent mock interview platform designed to help
+              PlaceMate AI is an intelligent mock interview platform designed to help
               candidates practice and refine their interview skills using advanced AI.
             </p>
             <p className="text-white/60 leading-relaxed">
@@ -58,20 +58,13 @@ function About() {
             </div>
           </div>
           <div ref={rightRef} className="flex items-center justify-center">
-            <div className="relative w-full max-w-md aspect-square">
-              <div className="absolute inset-0 rounded-3xl bg-violet/5 border border-violet/10 animate-pulse" />
-              <div className="absolute inset-4 rounded-3xl bg-surface/30 border border-violet/8" />
-              <div className="absolute inset-8 rounded-3xl bg-surface/40 border border-violet/10 flex items-center justify-center">
-                <div className="text-center p-6">
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-violet flex items-center justify-center shadow-2xl shadow-violet/30">
-                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-                    </svg>
-                  </div>
-                  <p className="text-white font-semibold text-lg">AI Interview Engine</p>
-                  <p className="text-white/45 text-sm mt-2">Powered by Gemini</p>
-                </div>
-              </div>
+            <div className="relative w-full max-w-md">
+              <div className="absolute -inset-3 rounded-3xl bg-violet/10 blur-2xl pointer-events-none" />
+              <img 
+                src="/image_hack_proj.jpg" 
+                alt="PlaceMate AI Team" 
+                className="relative w-full rounded-3xl border border-violet/20 shadow-2xl shadow-violet/10 object-cover"
+              />
             </div>
           </div>
         </div>

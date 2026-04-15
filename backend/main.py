@@ -1287,43 +1287,49 @@ from io import BytesIO
 
 from groq import Groq
 
+def clean_text(text: str) -> str:
+    """Normalize text to reduce randomness"""
+    import re
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 def get_gemini_ats_response(jd_text: str, resume_text: str, action: str) -> str:
-    # Changed from Gemini to Groq as requested
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Groq API Key not configured in backend.")
     
     client = Groq(api_key=api_key)
     
-    # Map actions to specific prompts
     prompts = {
-        "analysis": "Provide a detailed professional evaluation of the resume against the job description. Mention strengths and weaknesses.",
-        "gaps": "Identify the missing technical keywords and soft skills in the resume compared to the job description.",
-        "score": "Give a percentage match (0-100%). DO NOT use markdown. DO NOT use bolding or asterisks. Structure the output EXACTLY as follows:\nPercentage Match: [Score]%\nKey Missing Keywords: [Comma separated list]\nProfile Summary: [Brief analysis]"
+        "analysis": "Provide a strict ATS evaluation. You MUST use markdown bullet points with a blank empty line before and after any list. DO NOT use emojis.\n\n- Check XYZ formula usage\n- Evaluate grammar and tone\n- List strengths and weaknesses\n- Suggest improvements",
+        "gaps": "Perform keyword gap analysis. You MUST use markdown bullet points with a blank empty line before and after any list. DO NOT use emojis.\n\nOutput format:\n- Missing Technical Skills\n- Missing Soft Skills\n- Missing Action Verbs\n- Unnecessary Words",
+        "score": "Calculate ATS match. DO NOT use markdown. DO NOT use bolding or asterisks. DO NOT use emojis.\n\nStructure the output EXACTLY as follows:\nPercentage Match: [Score]%\nKey Missing Keywords: [Comma separated list]\nProfile Summary: [Brief analysis of Issues and Final Verdict]"
     }
     
     task_prompt = prompts.get(action, prompts["analysis"])
     
-    full_query = f"Task: {task_prompt}\nJob Description: {jd_text}\nResume Content: {resume_text}"
-    
     try:
         chat_completion = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a specialized ATS (Applicant Tracking System) expert."
+                    "content": "You are a strict ATS evaluation system.\n\nRULES:\n- Always return deterministic output\n- Use fixed headings and bullet format\n- No variation in structure\n- Be concise and professional"
                 },
                 {
                     "role": "user",
-                    "content": full_query
+                    "content": f"TASK:\n{task_prompt}\n\nJob Description:\n{jd_text}\n\nResume:\n{resume_text}"
                 }
             ],
-            # Use explicit model string requested by user
-            model="openai/gpt-oss-120b",
+            temperature=0.0,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            max_tokens=1500
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not connect to Groq API. Last error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Groq API Error: {str(e)}")
 
 def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
     try:
@@ -1332,8 +1338,8 @@ def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
         for page in reader.pages:
             content = page.extract_text()
             if content:
-                text += content
-        return text
+                text += content + " "
+        return clean_text(text)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error reading PDF: {str(e)}")
 
@@ -1359,7 +1365,8 @@ async def analyze_resume_ats(
     if not resume_text:
         raise HTTPException(status_code=400, detail="Could not extract any text from the provided PDF.")
         
-    result = get_gemini_ats_response(job_description, resume_text, action)
+    jd_clean = clean_text(job_description)
+    result = get_gemini_ats_response(jd_clean, resume_text, action)
     return {"success": True, "action": action, "result": result}
 
 # Auto-cleanup: remove PDFs older than 1 hour

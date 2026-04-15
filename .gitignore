@@ -10,6 +10,11 @@ server/.env.*
 backend/.env
 backend/.env.*
 
+# Firebase Service Account (NEVER commit this)
+serviceAccountKey.json
+server/serviceAccountKey.json
+
 # Python
 __pycache__/
 *.pyc
+backend/venv/

@@ -80,17 +80,48 @@ function ATSChecker() {
       formData.append('job_description', jd);
       formData.append('resume', file);
       
-      const res = await fetch('http://127.0.0.1:8000/api/ats/analyze', {
+      const token = localStorage.getItem('firebaseToken');
+      const res = await fetch('http://localhost:3001/api/ats/check', {
         method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: formData
       });
       
       if (res.ok) {
         const data = await res.json();
-        setResultData(data.result);
+        // The new backend returns { reportId, result: { score, suggestions, ... } }
+        const result = data.result;
+        if (action === 'score') {
+          // Build a formatted string for the existing parser
+          const formatted = `Percentage Match: ${result.score}%\n\nKey Missing Keywords: ${(result.missingKeywords || []).join(', ')}\n\nProfile Summary: ${result.profileSummary || result.overallAssessment || ''}`;
+          setResultData(formatted);
+        } else if (action === 'analysis') {
+          let text = `## Overall Assessment\n\n${result.overallAssessment || ''}\n\n`;
+          if (result.sectionAnalysis) {
+            for (const [section, analysis] of Object.entries(result.sectionAnalysis)) {
+              text += `### ${section.charAt(0).toUpperCase() + section.slice(1)}\n\n${analysis}\n\n`;
+            }
+          }
+          if (result.suggestions?.length) {
+            text += `## Suggestions\n\n${result.suggestions.map(s => `- ${s}`).join('\n')}`;
+          }
+          setResultData(text);
+        } else if (action === 'gaps') {
+          let text = '## Missing Keywords\n\n';
+          text += (result.missingKeywords || []).map(k => `- ${k}`).join('\n') + '\n\n';
+          text += '## Missing Skills\n\n';
+          text += (result.missingSkills || []).map(s => `- ${s}`).join('\n') + '\n\n';
+          text += '## Experience Gaps\n\n';
+          text += (result.experienceGaps || []).map(g => `- ${g}`).join('\n') + '\n\n';
+          text += '## Recommendations\n\n';
+          text += (result.recommendations || result.suggestions || []).map(r => `- ${r}`).join('\n');
+          setResultData(text);
+        }
       } else {
         const err = await res.json();
-        setResultData('Error: ' + (err.detail || 'Failed to analyze resume.'));
+        setResultData('Error: ' + (err.error || err.detail || 'Failed to analyze resume.'));
       }
     } catch (e) {
       setResultData('Error connecting to backend: ' + e.message);
@@ -175,15 +206,15 @@ function ATSChecker() {
              </label>
              {file ? (
                <div className="mb-6">
-                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet/10 border border-violet/15 rounded-xl text-sm text-violet">
+                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-xl text-sm font-semibold text-green-400">
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                    </svg>
                    {file.name}
                  </div>
                </div>
              ) : (
-               <p className="text-white/35 text-sm mb-6">Drag and drop your resume, or click to browse<br /><span className="text-xs">PDF supported</span></p>
+               <p className="text-white/90 text-sm mb-6 font-medium">Drag and drop your resume, or click to browse<br /><span className="text-white/70 text-xs">PDF supported</span></p>
              )}
              
              <Button onClick={handleAnalyze} disabled={!file || !jd}>
